@@ -7,11 +7,12 @@ import NestScene from './NestScene.vue'
 import WeatherOverlay from './WeatherOverlay.vue'
 import BirdCard from './BirdCard.vue'
 import EventModal from './EventModal.vue'
+import ChallengeProgress from './ChallengeProgress.vue'
 import { WEATHER_COLORS } from '@/utils/constants'
 
 const router = useRouter()
 const {
-  state, allAdults, aliveCount,
+  state, allAdults, aliveCount, harvestProgress,
   collectBerry, feedBird, calmBird, buryBird,
   releaseBirds, keepAndBreed, returnToStart, tryLoadGame,
 } = useGameState()
@@ -59,6 +60,12 @@ const handleCollect = (id: string) => {
 
       <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div class="lg:col-span-3 order-2 lg:order-1 min-h-0 flex flex-col gap-3 overflow-y-auto scrollbar-hide">
+          <ChallengeProgress
+            v-if="state.harvestChallenge?.active"
+            :challenge="state.harvestChallenge"
+            :progress="harvestProgress"
+            :current-day="state.day"
+          />
           <div class="font-display text-lg text-amber-300 flex items-center gap-2 px-1">
             <span>🐦</span> 小鸟档案
           </div>

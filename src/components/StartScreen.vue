@@ -2,9 +2,10 @@
 import { useRouter } from 'vue-router'
 import { onMounted } from 'vue'
 import { useGameState } from '@/composables/useGameState'
+import { HARVEST_CHALLENGE_DAYS, HARVEST_CHALLENGE_GOALS } from '@/utils/constants'
 
 const router = useRouter()
-const { startGame, tryLoadGame, state } = useGameState()
+const { startGame, startHarvestChallenge, tryLoadGame, state } = useGameState()
 
 const hasSave = state.phase === 'playing' || state.phase === 'breeding'
 
@@ -14,6 +15,11 @@ onMounted(() => {
 
 const handleStart = () => {
   startGame()
+  router.push('/game')
+}
+
+const handleHarvestChallenge = () => {
+  startHarvestChallenge()
   router.push('/game')
 }
 
@@ -85,6 +91,32 @@ const handleContinue = () => {
           </div>
         </div>
 
+        <div class="bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-2xl p-5 mb-6 border border-amber-400/30 animate-pop-in" style="animation-delay: 0.2s">
+          <h3 class="font-display text-xl text-amber-300 mb-3 flex items-center gap-2">
+            <span>🌾</span> 丰收季挑战
+          </h3>
+          <div class="text-white/70 text-sm mb-4">
+            在 <span class="text-amber-300 font-bold">{{ HARVEST_CHALLENGE_DAYS }}</span> 天内完成以下目标，赢取丰厚奖励！
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/10">
+              <div class="text-2xl mb-1">💚</div>
+              <div class="text-white/60 text-xs">成活率</div>
+              <div class="font-bold text-green-400">{{ HARVEST_CHALLENGE_GOALS.survivalRate }}%</div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/10">
+              <div class="text-2xl mb-1">💝</div>
+              <div class="text-white/60 text-xs">繁殖窝数</div>
+              <div class="font-bold text-pink-400">{{ HARVEST_CHALLENGE_GOALS.breedingRounds }}窝</div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/10">
+              <div class="text-2xl mb-1">🐦</div>
+              <div class="text-white/60 text-xs">成鸟数量</div>
+              <div class="font-bold text-sky-400">{{ HARVEST_CHALLENGE_GOALS.adultCount }}只</div>
+            </div>
+          </div>
+        </div>
+
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             v-if="hasSave"
@@ -103,6 +135,15 @@ const handleContinue = () => {
           >
             <span class="text-xl">🪺</span>
             {{ hasSave ? '开启新的一窝' : '开始孵蛋！' }}
+          </button>
+
+          <button
+            class="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-2xl
+                   font-bold text-lg btn-3d hover:from-amber-400 hover:to-orange-500 flex items-center justify-center gap-2"
+            @click="handleHarvestChallenge"
+          >
+            <span class="text-xl">🌾</span>
+            丰收季挑战
           </button>
         </div>
 

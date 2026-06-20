@@ -1,5 +1,5 @@
 import { reactive, computed, watch } from 'vue'
-import type { GameState, Bird, Berry, GrowthStage, Personality, BerryType, Weather, GameScore } from '@/types/game'
+import type { GameState, Bird, Berry, GrowthStage, Personality, BerryType, Weather, GameScore, ChallengeMode, HarvestChallengeProgress, HarvestChallengeReward } from '@/types/game'
 import {
   ATTR_MIN, ATTR_MAX, DEATH_THRESHOLD,
   STAGE_DURATION, FOOD_NEED_MULTIPLIER,
@@ -8,12 +8,14 @@ import {
   BERRY_VALUES, WEATHER_CHANGE_INTERVAL, WEATHER_EFFECTS,
   DAY_DURATION, INITIAL_FOOD, MIN_EGGS, MAX_EGGS,
   MAX_BREEDING_ROUNDS, BIRD_NAMES,
+  HARVEST_CHALLENGE_DAYS, HARVEST_CHALLENGE_GOALS, HARVEST_CHALLENGE_REWARDS,
 } from '@/utils/constants'
 import { randomInt, randomFloat, clamp, randomChoice, generateId, chance } from '@/utils/random'
 import { saveGame, loadGame, clearSave } from '@/utils/storage'
 
 const createInitialState = (): GameState => ({
   phase: 'start',
+  challengeMode: 'normal',
   day: 1,
   dayProgress: 0,
   currentWeather: 'sunny',
@@ -89,11 +91,24 @@ const addEventLog = (message: string, type: string = 'info') => {
   if (state.eventLog.length > 50) state.eventLog.pop()
 }
 
-const startGame = () => {
+const startGame = (mode: ChallengeMode = 'normal') => {
   Object.assign(state, createInitialState())
   usedNames.clear()
+  state.challengeMode = mode
   state.phase = 'playing'
   clearSave()
+
+  if (mode === 'harvest') {
+    state.harvestChallenge = {
+      active: true,
+      daysLimit: HARVEST_CHALLENGE_DAYS,
+      goals: { ...HARVEST_CHALLENGE_GOALS },
+      completed: false,
+      failed: false,
+    }
+    addEventLog(`🌾 丰收季挑战开始！在 ${HARVEST_CHALLENGE_DAYS} 天内完成目标~`, 'success')
+    addEventLog(`🎯 目标：成活率 ${HARVEST_CHALLENGE_GOALS.survivalRate}%、繁殖 ${HARVEST_CHALLENGE_GOALS.breedingRounds} 窝、养成 ${HARVEST_CHALLENGE_GOALS.adultCount} 只成鸟`, 'info')
+  }
 
   const eggCount = randomInt(MIN_EGGS, MAX_EGGS)
   for (let i = 0; i < eggCount; i++) {
@@ -103,6 +118,64 @@ const startGame = () => {
   addEventLog(`🎉 新的一窝！鸟巢里有 ${eggCount} 颗蛋在等待孵化~`, 'success')
   startGameLoop()
   saveGame(state)
+}
+
+const startHarvestChallenge = () => {
+  startGame('harvest')
+}
+
+const harvestProgress = computed<HarvestChallengeProgress>(() => {
+  const totalBirds = state.totalHatched
+  const survived = totalBirds > 0 ? totalBirds - state.totalDied : 0
+  const survivalRate = totalBirds > 0 ? Math.round((survived / totalBirds) * 100) : 100
+  const adultCount = state.birds.filter(b => !b.isDead && b.stage === 'adult').length
+
+  return {
+    survivalRate,
+    breedingRounds: state.breedingCount,
+    adultCount,
+  }
+})
+
+const calculateHarvestReward = (): HarvestChallengeReward => {
+  const progress = harvestProgress.value
+  const goals = HARVEST_CHALLENGE_GOALS
+
+  let achieved = 0
+  if (progress.survivalRate >= goals.survivalRate) achieved++
+  if (progress.breedingRounds >= goals.breedingRounds) achieved++
+  if (progress.adultCount >= goals.adultCount) achieved++
+
+  if (achieved === 3) return { ...HARVEST_CHALLENGE_REWARDS.gold, tier: 'gold' }
+  if (achieved === 2) return { ...HARVEST_CHALLENGE_REWARDS.silver, tier: 'silver' }
+  if (achieved === 1) return { ...HARVEST_CHALLENGE_REWARDS.bronze, tier: 'bronze' }
+  return { ...HARVEST_CHALLENGE_REWARDS.none, tier: 'none' }
+}
+
+const checkHarvestChallengeEnd = () => {
+  if (!state.harvestChallenge?.active) return false
+
+  const progress = harvestProgress.value
+  const goals = HARVEST_CHALLENGE_GOALS
+
+  const allAchieved =
+    progress.survivalRate >= goals.survivalRate &&
+    progress.breedingRounds >= goals.breedingRounds &&
+    progress.adultCount >= goals.adultCount
+
+  if (allAchieved && !state.harvestChallenge.completed) {
+    state.harvestChallenge.completed = true
+    addEventLog(`🌟 恭喜！丰收季挑战所有目标已达成！`, 'success')
+  }
+
+  if (state.day >= state.harvestChallenge.daysLimit) {
+    const reward = calculateHarvestReward()
+    state.harvestChallenge.reward = reward
+    addEventLog(`⏰ 丰收季挑战结束！${reward.title}`, reward.tier === 'none' ? 'danger' : 'success')
+    return true
+  }
+
+  return false
 }
 
 const startGameLoop = () => {
@@ -137,6 +210,12 @@ const updateGame = (deltaMs: number) => {
     state.dayProgress -= 1
     state.day += 1
     addEventLog(`📅 第 ${state.day} 天开始了！`, 'info')
+    if (state.harvestChallenge?.active) {
+      const daysLeft = state.harvestChallenge.daysLimit - state.day
+      if (daysLeft > 0 && daysLeft <= 3) {
+        addEventLog(`⏰ 丰收季挑战还剩 ${daysLeft} 天！`, 'warning')
+      }
+    }
   }
 
   if (Date.now() >= state.nextWeatherChangeAt) {
@@ -151,6 +230,12 @@ const updateGame = (deltaMs: number) => {
   })
 
   cleanupExpiredBerries()
+
+  if (checkHarvestChallengeEnd()) {
+    endGame('harvestEnd')
+    return
+  }
+
   checkGameEnd()
   saveGame(state)
 }
@@ -422,11 +507,17 @@ const calculateScore = (): GameScore => {
     ? aliveBirds.reduce((s, b) => s + (b.feedingCount > 10 ? 5 : 2), 0)
     : 0
 
+  let harvestBonus = 0
+  if (state.harvestChallenge?.reward) {
+    harvestBonus = state.harvestChallenge.reward.bonusScore
+  }
+
   const totalScore = Math.round(
     survivalRate * 40 +
     avgHealth * 0.3 +
     breedingBonus +
-    personalityBonus
+    personalityBonus +
+    harvestBonus
   )
 
   let stars = 1
@@ -435,11 +526,15 @@ const calculateScore = (): GameScore => {
   else if (totalScore >= 50) stars = 3
   else if (totalScore >= 30) stars = 2
 
-  const rank = stars >= 5 ? '🏆 传奇养鸟人'
+  let rank = stars >= 5 ? '🏆 传奇养鸟人'
     : stars === 4 ? '🥇 金牌养鸟人'
     : stars === 3 ? '🥈 银牌养鸟人'
     : stars === 2 ? '🥉 铜牌养鸟人'
     : '🌱 新手养鸟人'
+
+  if (state.harvestChallenge?.reward && state.harvestChallenge.reward.tier !== 'none') {
+    rank = state.harvestChallenge.reward.title
+  }
 
   return {
     totalScore: clamp(totalScore, 0, 100),
@@ -455,6 +550,9 @@ const calculateScore = (): GameScore => {
 const endGame = (_reason: string) => {
   stopGameLoop()
   state.phase = 'ended'
+  if (state.harvestChallenge?.active && !state.harvestChallenge.reward) {
+    state.harvestChallenge.reward = calculateHarvestReward()
+  }
   state.score = calculateScore()
   addEventLog('🎮 游戏结束', 'info')
   saveGame(state)
@@ -462,7 +560,12 @@ const endGame = (_reason: string) => {
 
 const restartGame = () => {
   stopGameLoop()
-  startGame()
+  startGame(state.challengeMode)
+}
+
+const restartHarvestChallenge = () => {
+  stopGameLoop()
+  startGame('harvest')
 }
 
 const returnToStart = () => {
@@ -494,6 +597,8 @@ export function useGameState() {
   return {
     state,
     startGame,
+    startHarvestChallenge,
+    restartHarvestChallenge,
     stopGameLoop,
     collectBerry,
     feedBird,
@@ -506,5 +611,7 @@ export function useGameState() {
     tryLoadGame,
     allAdults,
     aliveCount,
+    harvestProgress,
+    calculateHarvestReward,
   }
 }

@@ -2,9 +2,10 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameState } from '@/composables/useGameState'
+import { HARVEST_CHALLENGE_GOALS, HARVEST_CHALLENGE_GOAL_DESCRIPTIONS } from '@/utils/constants'
 
 const router = useRouter()
-const { state, restartGame, returnToStart } = useGameState()
+const { state, restartGame, restartHarvestChallenge, returnToStart, harvestProgress } = useGameState()
 
 onMounted(() => {
   if (state.phase !== 'ended' && !state.score) {
@@ -13,14 +14,36 @@ onMounted(() => {
 })
 
 const score = computed(() => state.score)
+const isHarvestMode = computed(() => state.challengeMode === 'harvest')
+const harvestReward = computed(() => state.harvestChallenge?.reward)
 
 const starArray = computed(() => {
   const s = score.value?.stars ?? 1
   return Array.from({ length: 5 }, (_, i) => i < s)
 })
 
+const harvestGoalResults = computed(() => {
+  if (!isHarvestMode.value) return []
+  const progress = harvestProgress.value
+  return HARVEST_CHALLENGE_GOAL_DESCRIPTIONS.map(desc => {
+    const goalValue = HARVEST_CHALLENGE_GOALS[desc.key as keyof typeof HARVEST_CHALLENGE_GOALS]
+    const currentValue = progress[desc.key as keyof typeof progress]
+    return {
+      ...desc,
+      goalValue,
+      currentValue,
+      achieved: currentValue >= goalValue,
+    }
+  })
+})
+
 const handleRestart = () => {
   restartGame()
+  router.push('/game')
+}
+
+const handleRestartHarvest = () => {
+  restartHarvestChallenge()
   router.push('/game')
 }
 
@@ -41,8 +64,17 @@ const handleHome = () => {
 
     <div v-if="score" class="relative z-10 max-w-2xl w-full">
       <div class="text-center mb-6 animate-pop-in">
-        <div class="text-7xl mb-4">{{ score.stars >= 4 ? '🏆' : score.stars >= 3 ? '🎉' : '🌱' }}</div>
-        <h1 class="font-display text-5xl text-white mb-2 text-stroke">游戏结束</h1>
+        <div class="text-7xl mb-4">
+          <template v-if="isHarvestMode && harvestReward">
+            {{ harvestReward.tier === 'gold' ? '🏆' : harvestReward.tier === 'silver' ? '🥈' : harvestReward.tier === 'bronze' ? '🥉' : '💔' }}
+          </template>
+          <template v-else>
+            {{ score.stars >= 4 ? '🏆' : score.stars >= 3 ? '🎉' : '🌱' }}
+          </template>
+        </div>
+        <h1 class="font-display text-5xl text-white mb-2 text-stroke">
+          {{ isHarvestMode ? '丰收季挑战结束' : '游戏结束' }}
+        </h1>
         <div class="font-display text-3xl text-amber-300 mb-6">{{ score.rank }}</div>
       </div>
 
@@ -93,6 +125,36 @@ const handleHome = () => {
           </div>
         </div>
 
+        <div v-if="isHarvestMode && harvestReward" class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-2xl p-5 mb-6 border border-amber-400/40 animate-pop-in" style="animation-delay: 0.25s">
+          <div class="text-center mb-4">
+            <div class="text-white/80 mb-2 flex items-center justify-center gap-2">
+              <span>🌾</span>
+              <span class="font-medium">丰收季挑战结算</span>
+            </div>
+            <div class="text-amber-300 text-lg font-bold mb-1">{{ harvestReward.title }}</div>
+            <div class="text-white/60 text-sm">{{ harvestReward.description }}</div>
+            <div v-if="harvestReward.bonusScore > 0" class="mt-2 text-green-400 font-bold">
+              +{{ harvestReward.bonusScore }} 挑战奖励分
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div
+              v-for="goal in harvestGoalResults"
+              :key="goal.key"
+              class="bg-white/5 rounded-xl p-3 text-center border transition-all"
+              :class="goal.achieved ? 'border-green-400/40 bg-green-500/10' : 'border-white/10'"
+            >
+              <div class="text-xl mb-1">{{ goal.emoji }}</div>
+              <div class="text-white/60 text-xs mb-1">{{ goal.label }}</div>
+              <div class="font-bold text-sm" :class="goal.achieved ? 'text-green-400' : 'text-white/70'">
+                {{ goal.currentValue }}{{ goal.suffix }}
+                <span class="text-white/40">/ {{ goal.goalValue }}{{ goal.suffix }}</span>
+              </div>
+              <div v-if="goal.achieved" class="text-green-400 text-xs mt-1">✓ 达成</div>
+            </div>
+          </div>
+        </div>
+
         <div class="bg-gradient-to-r from-amber-500/10 to-rose-500/10 rounded-2xl p-5 mb-6 border border-amber-400/20">
           <div class="text-center">
             <div class="text-white/80 mb-3 flex items-center justify-center gap-2">
@@ -125,6 +187,16 @@ const handleHome = () => {
 
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           <button
+            v-if="isHarvestMode"
+            class="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-2xl
+                   font-bold text-lg btn-3d hover:from-amber-400 hover:to-orange-500 flex items-center justify-center gap-2"
+            @click="handleRestartHarvest"
+          >
+            <span class="text-xl">🌾</span>
+            再来一次挑战！
+          </button>
+          <button
+            v-else
             class="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl
                    font-bold text-lg btn-3d hover:from-green-400 hover:to-emerald-500 flex items-center justify-center gap-2"
             @click="handleRestart"

@@ -8,6 +8,36 @@ export type BerryType = 'red' | 'blue' | 'golden'
 
 export type GamePhase = 'start' | 'playing' | 'breeding' | 'ended'
 
+export type ChallengeMode = 'normal' | 'harvest'
+
+export interface HarvestChallengeGoals {
+  survivalRate: number
+  breedingRounds: number
+  adultCount: number
+}
+
+export interface HarvestChallengeProgress {
+  survivalRate: number
+  breedingRounds: number
+  adultCount: number
+}
+
+export interface HarvestChallengeReward {
+  title: string
+  bonusScore: number
+  description: string
+  tier: 'gold' | 'silver' | 'bronze' | 'none'
+}
+
+export interface HarvestChallengeState {
+  active: boolean
+  daysLimit: number
+  goals: HarvestChallengeGoals
+  reward?: HarvestChallengeReward
+  completed: boolean
+  failed: boolean
+}
+
 export interface Bird {
   id: string
   name: string
@@ -42,6 +72,7 @@ export interface Berry {
 
 export interface GameState {
   phase: GamePhase
+  challengeMode: ChallengeMode
   day: number
   dayProgress: number
   currentWeather: Weather
@@ -56,6 +87,7 @@ export interface GameState {
   eventLog: { id: string; message: string; type: string; timestamp: number }[]
   score?: GameScore
   selectedBirdId?: string
+  harvestChallenge?: HarvestChallengeState
 }
 
 export interface GameScore {
