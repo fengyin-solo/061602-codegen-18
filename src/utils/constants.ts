@@ -114,26 +114,25 @@ export const BIRD_NAMES = [
 export const HARVEST_CHALLENGE_DAYS = 15
 
 export const HARVEST_CHALLENGE_GOALS = {
-  survivalRate: 70,
-  breedingRounds: 2,
-  adultCount: 4,
+  survivalRate: 80,
+  breedingRounds: 3,
 }
 
 export const HARVEST_CHALLENGE_REWARDS = {
   gold: {
     title: '🏆 丰收之王',
     bonusScore: 50,
-    description: '全部目标达成！你是真正的养鸟大师！',
+    description: '高存活+高繁殖双目标达成！你是真正的养鸟大师！',
   },
   silver: {
     title: '🥈 丰收达人',
-    bonusScore: 30,
-    description: '达成两个目标，表现优秀！',
+    bonusScore: 25,
+    description: '达成其中一个目标，表现不错！',
   },
   bronze: {
     title: '🥉 丰收新手',
-    bonusScore: 15,
-    description: '达成一个目标，继续加油！',
+    bonusScore: 10,
+    description: '接近目标了，继续加油！',
   },
   none: {
     title: '💔 挑战失败',
@@ -143,7 +142,6 @@ export const HARVEST_CHALLENGE_REWARDS = {
 }
 
 export const HARVEST_CHALLENGE_GOAL_DESCRIPTIONS = [
-  { key: 'survivalRate', label: '成活率', emoji: '💚', suffix: '%' },
-  { key: 'breedingRounds', label: '繁殖窝数', emoji: '💝', suffix: '窝' },
-  { key: 'adultCount', label: '成鸟数量', emoji: '🐦', suffix: '只' },
+  { key: 'survivalRate', label: '高存活', emoji: '💚', suffix: '%' },
+  { key: 'breedingRounds', label: '高繁殖', emoji: '💝', suffix: '窝' },
 ]

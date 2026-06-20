@@ -14,15 +14,34 @@ const daysLeft = computed(() => Math.max(0, props.challenge.daysLimit - props.cu
 const progressItems = computed(() => {
   return HARVEST_CHALLENGE_GOAL_DESCRIPTIONS.map(desc => {
     const goalValue = props.challenge.goals[desc.key as keyof typeof props.challenge.goals]
-    const currentValue = props.progress[desc.key as keyof typeof props.progress]
-    const achieved = currentValue >= goalValue
-    const percentage = Math.min(100, Math.round((currentValue / goalValue) * 100))
+    const currentValue = props.progress[desc.key as keyof typeof props.progress] as number
+
+    let achieved = false
+    let displayValue = currentValue
+    let percentage = 0
+    let isPending = false
+
+    if (desc.key === 'survivalRate') {
+      if (!props.progress.hasHatchingRecord) {
+        isPending = true
+        percentage = 0
+      } else {
+        achieved = currentValue >= goalValue
+        percentage = Math.min(100, Math.round((currentValue / goalValue) * 100))
+      }
+    } else {
+      achieved = currentValue >= goalValue
+      percentage = Math.min(100, Math.round((currentValue / goalValue) * 100))
+    }
+
     return {
       ...desc,
       goalValue,
       currentValue,
+      displayValue,
       achieved,
       percentage,
+      isPending,
     }
   })
 })
@@ -46,10 +65,10 @@ const allAchieved = computed(() => progressItems.value.every(item => item.achiev
     </div>
 
     <div v-if="allAchieved" class="mb-3 px-3 py-2 rounded-xl bg-green-500/20 border border-green-400/30 text-center">
-      <span class="text-green-300 text-sm font-bold">🌟 所有目标已达成！太棒了！</span>
+      <span class="text-green-300 text-sm font-bold">🌟 双目标已达成！太棒了！</span>
     </div>
 
-    <div class="space-y-3">
+    <div class="grid grid-cols-2 gap-3">
       <div
         v-for="item in progressItems"
         :key="item.key"
@@ -61,16 +80,21 @@ const allAchieved = computed(() => progressItems.value.every(item => item.achiev
             <span>{{ item.emoji }}</span>
             <span class="text-white/80 text-sm font-medium">{{ item.label }}</span>
           </div>
-          <div class="flex items-center gap-1">
+          <span v-if="item.achieved" class="text-green-400">✓</span>
+        </div>
+        <div class="flex items-baseline gap-1 mb-1.5">
+          <template v-if="item.isPending">
+            <span class="text-white/50 text-xs font-medium">孵化中...</span>
+          </template>
+          <template v-else>
             <span
-              class="text-sm font-bold"
+              class="text-lg font-bold"
               :class="item.achieved ? 'text-green-400' : 'text-white'"
             >
-              {{ item.currentValue }}{{ item.suffix }}
+              {{ item.displayValue }}{{ item.suffix }}
             </span>
             <span class="text-white/40 text-xs">/ {{ item.goalValue }}{{ item.suffix }}</span>
-            <span v-if="item.achieved" class="text-green-400 ml-1">✓</span>
-          </div>
+          </template>
         </div>
         <div class="h-2 bg-black/30 rounded-full overflow-hidden">
           <div

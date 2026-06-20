@@ -98,21 +98,16 @@ const handleContinue = () => {
           <div class="text-white/70 text-sm mb-4">
             在 <span class="text-amber-300 font-bold">{{ HARVEST_CHALLENGE_DAYS }}</span> 天内完成以下目标，赢取丰厚奖励！
           </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/10">
-              <div class="text-2xl mb-1">💚</div>
-              <div class="text-white/60 text-xs">成活率</div>
-              <div class="font-bold text-green-400">{{ HARVEST_CHALLENGE_GOALS.survivalRate }}%</div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white/5 rounded-xl p-4 text-center border border-white/10">
+              <div class="text-3xl mb-2">💚</div>
+              <div class="text-white/60 text-xs mb-1">高存活目标</div>
+              <div class="font-bold text-green-400 text-lg">成活率 ≥ {{ HARVEST_CHALLENGE_GOALS.survivalRate }}%</div>
             </div>
-            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/10">
-              <div class="text-2xl mb-1">💝</div>
-              <div class="text-white/60 text-xs">繁殖窝数</div>
-              <div class="font-bold text-pink-400">{{ HARVEST_CHALLENGE_GOALS.breedingRounds }}窝</div>
-            </div>
-            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/10">
-              <div class="text-2xl mb-1">🐦</div>
-              <div class="text-white/60 text-xs">成鸟数量</div>
-              <div class="font-bold text-sky-400">{{ HARVEST_CHALLENGE_GOALS.adultCount }}只</div>
+            <div class="bg-white/5 rounded-xl p-4 text-center border border-white/10">
+              <div class="text-3xl mb-2">💝</div>
+              <div class="text-white/60 text-xs mb-1">高繁殖目标</div>
+              <div class="font-bold text-pink-400 text-lg">繁殖 ≥ {{ HARVEST_CHALLENGE_GOALS.breedingRounds }}窝</div>
             </div>
           </div>
         </div>

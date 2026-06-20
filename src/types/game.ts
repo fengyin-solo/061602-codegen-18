@@ -13,13 +13,12 @@ export type ChallengeMode = 'normal' | 'harvest'
 export interface HarvestChallengeGoals {
   survivalRate: number
   breedingRounds: number
-  adultCount: number
 }
 
 export interface HarvestChallengeProgress {
   survivalRate: number
   breedingRounds: number
-  adultCount: number
+  hasHatchingRecord: boolean
 }
 
 export interface HarvestChallengeReward {

@@ -27,12 +27,29 @@ const harvestGoalResults = computed(() => {
   const progress = harvestProgress.value
   return HARVEST_CHALLENGE_GOAL_DESCRIPTIONS.map(desc => {
     const goalValue = HARVEST_CHALLENGE_GOALS[desc.key as keyof typeof HARVEST_CHALLENGE_GOALS]
-    const currentValue = progress[desc.key as keyof typeof progress]
+    const currentValue = progress[desc.key as keyof typeof progress] as number
+    let achieved = false
+    let displayValue = currentValue
+    let noRecord = false
+
+    if (desc.key === 'survivalRate') {
+      if (!progress.hasHatchingRecord) {
+        noRecord = true
+        achieved = false
+      } else {
+        achieved = currentValue >= goalValue
+      }
+    } else {
+      achieved = currentValue >= goalValue
+    }
+
     return {
       ...desc,
       goalValue,
       currentValue,
-      achieved: currentValue >= goalValue,
+      displayValue,
+      achieved,
+      noRecord,
     }
   })
 })
@@ -137,20 +154,27 @@ const handleHome = () => {
               +{{ harvestReward.bonusScore }} 挑战奖励分
             </div>
           </div>
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-2 gap-3">
             <div
               v-for="goal in harvestGoalResults"
               :key="goal.key"
-              class="bg-white/5 rounded-xl p-3 text-center border transition-all"
+              class="bg-white/5 rounded-xl p-4 text-center border transition-all"
               :class="goal.achieved ? 'border-green-400/40 bg-green-500/10' : 'border-white/10'"
             >
-              <div class="text-xl mb-1">{{ goal.emoji }}</div>
+              <div class="text-2xl mb-2">{{ goal.emoji }}</div>
               <div class="text-white/60 text-xs mb-1">{{ goal.label }}</div>
-              <div class="font-bold text-sm" :class="goal.achieved ? 'text-green-400' : 'text-white/70'">
-                {{ goal.currentValue }}{{ goal.suffix }}
-                <span class="text-white/40">/ {{ goal.goalValue }}{{ goal.suffix }}</span>
+              <div class="font-bold text-lg" :class="goal.achieved ? 'text-green-400' : 'text-white/70'">
+                <template v-if="goal.noRecord">
+                  <span class="text-white/40">无孵化记录</span>
+                </template>
+                <template v-else>
+                  {{ goal.currentValue }}{{ goal.suffix }}
+                  <span class="text-white/40 text-sm">/ {{ goal.goalValue }}{{ goal.suffix }}</span>
+                </template>
               </div>
-              <div v-if="goal.achieved" class="text-green-400 text-xs mt-1">✓ 达成</div>
+              <div v-if="goal.achieved" class="text-green-400 text-xs mt-2 font-bold">✓ 达成</div>
+              <div v-else-if="goal.noRecord" class="text-white/40 text-xs mt-2">--</div>
+              <div v-else class="text-white/40 text-xs mt-2">未达成</div>
             </div>
           </div>
         </div>

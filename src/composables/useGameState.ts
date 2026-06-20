@@ -107,7 +107,7 @@ const startGame = (mode: ChallengeMode = 'normal') => {
       failed: false,
     }
     addEventLog(`🌾 丰收季挑战开始！在 ${HARVEST_CHALLENGE_DAYS} 天内完成目标~`, 'success')
-    addEventLog(`🎯 目标：成活率 ${HARVEST_CHALLENGE_GOALS.survivalRate}%、繁殖 ${HARVEST_CHALLENGE_GOALS.breedingRounds} 窝、养成 ${HARVEST_CHALLENGE_GOALS.adultCount} 只成鸟`, 'info')
+    addEventLog(`🎯 目标：高存活 ${HARVEST_CHALLENGE_GOALS.survivalRate}%、高繁殖 ${HARVEST_CHALLENGE_GOALS.breedingRounds} 窝`, 'info')
   }
 
   const eggCount = randomInt(MIN_EGGS, MAX_EGGS)
@@ -126,14 +126,14 @@ const startHarvestChallenge = () => {
 
 const harvestProgress = computed<HarvestChallengeProgress>(() => {
   const totalBirds = state.totalHatched
-  const survived = totalBirds > 0 ? totalBirds - state.totalDied : 0
-  const survivalRate = totalBirds > 0 ? Math.round((survived / totalBirds) * 100) : 100
-  const adultCount = state.birds.filter(b => !b.isDead && b.stage === 'adult').length
+  const hasHatchingRecord = totalBirds > 0
+  const survived = hasHatchingRecord ? totalBirds - state.totalDied : 0
+  const survivalRate = hasHatchingRecord ? Math.round((survived / totalBirds) * 100) : 0
 
   return {
     survivalRate,
     breedingRounds: state.breedingCount,
-    adultCount,
+    hasHatchingRecord,
   }
 })
 
@@ -141,14 +141,18 @@ const calculateHarvestReward = (): HarvestChallengeReward => {
   const progress = harvestProgress.value
   const goals = HARVEST_CHALLENGE_GOALS
 
-  let achieved = 0
-  if (progress.survivalRate >= goals.survivalRate) achieved++
-  if (progress.breedingRounds >= goals.breedingRounds) achieved++
-  if (progress.adultCount >= goals.adultCount) achieved++
+  const survivalAchieved = progress.hasHatchingRecord && progress.survivalRate >= goals.survivalRate
+  const breedingAchieved = progress.breedingRounds >= goals.breedingRounds
 
-  if (achieved === 3) return { ...HARVEST_CHALLENGE_REWARDS.gold, tier: 'gold' }
-  if (achieved === 2) return { ...HARVEST_CHALLENGE_REWARDS.silver, tier: 'silver' }
-  if (achieved === 1) return { ...HARVEST_CHALLENGE_REWARDS.bronze, tier: 'bronze' }
+  if (survivalAchieved && breedingAchieved) {
+    return { ...HARVEST_CHALLENGE_REWARDS.gold, tier: 'gold' }
+  }
+  if (survivalAchieved || breedingAchieved) {
+    return { ...HARVEST_CHALLENGE_REWARDS.silver, tier: 'silver' }
+  }
+  if (progress.hasHatchingRecord && (progress.survivalRate >= goals.survivalRate * 0.6 || progress.breedingRounds >= goals.breedingRounds * 0.6)) {
+    return { ...HARVEST_CHALLENGE_REWARDS.bronze, tier: 'bronze' }
+  }
   return { ...HARVEST_CHALLENGE_REWARDS.none, tier: 'none' }
 }
 
@@ -158,10 +162,9 @@ const checkHarvestChallengeEnd = () => {
   const progress = harvestProgress.value
   const goals = HARVEST_CHALLENGE_GOALS
 
-  const allAchieved =
-    progress.survivalRate >= goals.survivalRate &&
-    progress.breedingRounds >= goals.breedingRounds &&
-    progress.adultCount >= goals.adultCount
+  const survivalAchieved = progress.hasHatchingRecord && progress.survivalRate >= goals.survivalRate
+  const breedingAchieved = progress.breedingRounds >= goals.breedingRounds
+  const allAchieved = survivalAchieved && breedingAchieved
 
   if (allAchieved && !state.harvestChallenge.completed) {
     state.harvestChallenge.completed = true
